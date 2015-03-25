@@ -2,7 +2,7 @@ Creating Gantt charts in PDF document
 =====================================
 
 task: Generating PDF documents with Gantt charts
-
+![generated gantt sample](gantt-screenshot.png)
 Short description
 -----------------
 PdfGantt is a TCPDF wrapper class for rendering Gantt charts as a part of created PDF document.
