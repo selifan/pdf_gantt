@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<printdef>
+  <version>1.0</version>
+  <title>Printing PDF form with Gantt chart</title>
+  <description>Gantt in PDF Example</description>
+  <stringcharset>UTF-8</stringcharset>
+
+  <baseparameters>
+    <margins left="0" top="0" right="0" bottom="0" />
+    <font name="arial" size="10" />
+    <page orientation="L" size="A4" units="mm" />
+  </baseparameters>
+  <pages>
+   <page>
+    <field name="working_period" posx="184" posy="21.0" />
+
+    <field name="person_no" posx="15" />
+    <field name="person_name" posx="23" width="85" size="9"/>
+    <field name="person_birth" posx="120" />
+    <field name="person_sex" posx="145" />
+    <datagrid name="person_list" fields="person_no,person_name,person_birth,person_sex" posx="0" posy="50" step_y="4.6" rows="26" />
+
+    <plugin type="pfpdf_gantt" name="my_gantt1" posy="70" posx="10" height="90" width="0" bgcolor="#ccc" options="bgcolor=#e8e8f0,dateformat=d.m,title_width=0.25,arrow_color=#F22,shade_color=#BBB"/>
+
+    <field name="barcode1" type="barcode:C128B" options="text,fontsize=7" posx="110" posy="193" align='c' height="7" width="80" />
+    <field name="draft_mark" posx="70" posy="45" size="40" rotate="20" color="gray"/>
+   </page>
+  </pages>
+</printdef>

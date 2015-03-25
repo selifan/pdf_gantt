@@ -1,0 +1,501 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>Printing Gantt charts in PDF document</title>
+<meta http-equiv="content-type" content="text/html; charset=iso-8859-1">
+<link rel="stylesheet" type="text/css" href="helpstyles.css">
+</head>
+<body>
+
+<!-- DOC BEGIN -->
+
+<h3>Printing Gantt charts in PDF document</h3>
+
+<h3>Class PdfGantt for drawing Gantt charts in generated PDF documents</h3>
+
+PdfGantt is a wrapper for the famous TCPDF class, it is written for
+rendering Gantt charts inside PDF documents, created by TCPDF.
+<br><br>Currently class has following features.
+<ul>
+  <li>automatic definition of date range, based on listed "tasks", if this range is not defined implicitly</li>
+  <li>supports dependencies between tasks (automatically shifts start dates for dependent tasks, even if different start date passed)</li>
+  <li>printing milestones (if they were passed with chart data for at least one task)</li>
+  <li>color and textuual representation of "task progress" (if done percentage passed)</li>
+  <li>supports user color definitions for background, grid lines, optional shadows, task descriptions and responsible people, font size tuning
+  </li>
+  <li>drawing "parts" of a chart (to make long "panorams")</li>
+</ul>
+
+<div style="text-align:center">
+<img src="gantt.png" />
+</div>
+
+<h4>Instalation</h4>
+
+Copy file <b>pdf_gantt.php</b> into one of include_path folders of your webserver
+ Don't forget to install TCPDF classes too.
+ Link: <a href="http://tcpdf.org" target="_blank">tcpdf.org</a>
+
+<h4>Using a class</h4>
+PdfGantt can be used as standalone (of course with TCPDF), for drawing charts directly to TCPDF object,
+or as a plugin for <a href="http://www.phpclasses.org/package/7791" target="_blank">CPrintFormPdf</a> class.
+
+<h5>Using PdfGantt in standalone mode</h5>
+
+In standalone mode you use the main class PdfGantt.
+
+<br><br>Example.<br>
+<pre>
+require_once('tcpdf/tcpdf.php');
+require_once('pdf_gantt.php');
+
+$pdf = new TCPDF('P','mm','A4');
+$pdf-&gt;SetFont('', '', 8); # Your default font name,style,size here !
+$pdf-&gt;setPrintHeader(false);
+$pdf-&gt;setPrintFooter(false);
+
+$pdf-&gt;AddPage();
+
+$gantt_cfg = array(
+    ,'dateformat'=&gt;'j Y'
+    ,'descr_width'=&gt;0.30
+    ,'bgcolor'=&gt;'#eee'
+    ,'arrow_color'=&gt;'#25e'
+    ,'grid_color'=&gt;'#cce'
+    ,'shade_color'=&gt;'#bbb'
+);
+
+$gantt = new PdfGantt($pdf, $gantt_cfg,10,10,190,80);
+
+$ganttdata = array(
+   'title' =&gt; 'Project Dream Application'
+  ,'daterange'=&gt;array('2013-01-01')
+  ,'items' =&gt; array(
+        array('id'=&gt;'task00', 'description'=&gt;'Publish on KickStarter', 'datestart'=&gt;'2013-01-01', 'workdays'=&gt;14
+          ,'members'=&gt;'Andriano,Mickele','progress'=&gt;0.30)
+       ,array('id'=&gt;'task01', 'description'=&gt;'Planning Development process', 'datestart'=&gt;'2013-01-15'
+           , 'workdays'=&gt;28,'members'=&gt;'Steve,Paul,Hanna')
+       ,array('id'=&gt;'task03', 'description'=&gt;'Developing Application Core', 'datestart'=&gt;'2013-01-01', 'workdays'=&gt;59
+           ,'progress'=&gt;0.20, 'members'=&gt;'Antonio,Paul,Barbara')
+       ,array('id'=&gt;'task02', 'description'=&gt;'Developing Main UI', 'datestart'=&gt;'2013-01-01', 'workdays'=&gt;59
+           , 'progress'=&gt;0.25, 'members'=&gt;array('John','Paul'))
+       ,array('id'=&gt;'task04', 'description'=&gt;'Programming Plugins', 'datestart'=&gt;'2013-01-01'
+         , 'workdays'=&gt;30, 'dependencies'=&gt;'task02,task03', 'members'=&gt;'Antonio,Paul,John', 'milestone'=&gt;'Stage 1')
+       ,array('id'=&gt;'task05', 'description'=&gt;'Alpha Testing', 'workdays'=&gt;30, 'dependencies'=&gt;'task01,task02,task03,task04'
+         , 'members'=&gt;'All team members','color'=&gt;'#aa0', 'mcolor'=&gt;'#e22')
+       ,array('id'=&gt;'task06', 'description'=&gt;'Beta (open) Testing', 'workdays'=&gt;30, 'dependencies'=&gt;'task05')
+       ,array('id'=&gt;'task07', 'description'=&gt;'Making Release Package', 'workdays'=&gt;14, 'datestart'=&gt;'2013-01-01'
+         ,'dependencies'=&gt;'task06', 'members'=&gt;'Paul,Andriano',     'milestone'=&gt;'Releasing')
+       ,array('id'=&gt;'task08', 'description'=&gt;'Publishing on Steam', 'workdays'=&gt;10, 'datestart'=&gt;'2013-01-01'
+         ,'dependencies'=&gt;'task07', 'members'=&gt;'John,Mickele')
+  )
+);
+
+$gantt-&gt;Render($ganttdata);
+
+$pdf-&gt;Output('Gantt_standalone.pdf', 'I');
+</pre>
+
+Please note, you have to do all "preparation work" for TCPDF object (SetFont(), AddPage() before calling method Render(), and Output()
+to generate complete PDF file.
+
+<h5>Using module as printform-pdf plugin (class PfPdf_Gantt)</h5>
+
+PDF-form creating class <a href="http://www.phpclasses.org/package/7791" target="_blank">PrintFormPdf</a>
+has a new feature - plugins (since version 1.1). Every plugin gets rectangle area inside PDF page, so it can render anything inside it, according to passed user data.
+
+such plugin shoul derive from PfPdfPlugin (this is an abstract class defined in printform-pdf.php).
+
+<br>
+In our pdf_gantt.php this class called PfPdf_Gantt.
+So, when we included file pdf_gantt.php after "base module" printform-pdf.php, everything almoust done.
+<br>After that we add our plugin definition in XML config file for CPrintFormPdf.
+
+<br><br>
+<pre>
+// Sample of XML configuration file
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;printdef&gt;
+  &lt;version modified="2012-04-28"&gt;1.0&lt;/version&gt;
+
+  &lt;baseparameters&gt;
+    &lt;margins left="0" top="0" right="0" bottom="0" /&gt;
+    &lt;font name="arial" size="10" /&gt;
+    &lt;page orientation="L" size="A4" units="mm" /&gt;
+
+  &lt;/baseparameters&gt;
+  &lt;pages&gt;
+   &lt;page&gt;
+    &lt;field name="policy_serno" posx="165" posy="17.0" /&gt;
+    &lt;field name="policydate" posx="210" posy="17.0" /&gt;
+    &lt;field name="insurance_period" posx="184" posy="21.0" /&gt;
+
+    &lt;field name="drv_no" posx="15" /&gt;
+    &lt;field name="drv_name" posx="23" width="85" size="9"/&gt;
+    &lt;field name="drv_birth" posx="120" /&gt;
+    &lt;field name="drv_sex" posx="145" /&gt;
+    &lt;field name="drv_license" posx="160" /&gt;
+    &lt;field name="drv_exp" posx="194" /&gt;
+    &lt;field name="drv_scases" posx="228" width="10" align="C" /&gt;
+    &lt;field name="drv_bmc" posx="268" width="10" align="C"/&gt;
+    &lt;datagrid name="drv_list" fields="drv_no,drv_name,drv_birth,drv_sex,drv_license,drv_exp,drv_scases,drv_bmc" posx="0" posy="50" step_y="4.6" rows="26" /&gt;
+
+    &lt;field name="ispolnitel" posx="135.0" posy="200" /&gt;
+    &lt;field name="b2bmark" posx="109" posy="189.5" size="8" /&gt;
+    &lt;field name="barcode1" type="barcode:C128B" options="text,fontsize=7" posx="110" posy="193" align='c' height="7" width="80" /&gt;
+<strong>
+    &lt;plugin type="pfpdf_gantt" name="my_gantt1" posy="70" posx="10" height="70" width="0" bgcolor="#e8e8e8"
+      options="dateformat=d.m,title_width=0.25,arrow_color=#F22,shade_color=#BBB" /&gt;
+</strong>
+    &lt;field name="draft_mark" posx="70" posy="45" size="40" rotate="20" color="gray"/&gt;
+   &lt;/page&gt;
+  &lt;/pages&gt;
+&lt;/printdef&gt;
+</pre>
+
+See a new tag <b>plugin</b>, hiding among output fields ?
+CPrintFormPdf treates it as "non-standard" output field, that should be rendered by calling respective plugin methods "plugin", whose class name set in <b>type</b> attribute.
+In our case it's type="pfpdf_gantt" - name of the class that defined in pdf_gantt.php and derived from PfPdfPlugin.
+
+<br><br>Like other output fields, "plugin" field can have "background" and "rotate" attributes, so it's possible to draw gannt chart over filled rectangle, and have it rotated by desired angle.
+
+<br><br>
+To pass gantt data to be rendered, method setPluginData($name, $data) is called.
+This must be done BEFORE calling final CPrintformPdf::Render() calling.
+
+<br><br>
+Below is a fragment from one of example scripts, that creates gantt chart as a part of complex form (plugin mode for PrintformPdf):
+
+<pre>
+$pdf = new CPrintFormPdf( $options );
+$pdf-&gt;LoadConfig('gantt-sample1.xml');
+// ...
+$pdf-&gt;AddData($data); // ïåðåäàåì "îáû÷íûå" äàííûå äëÿ âûâîäà ïðè ïîìîùè CPrintformPdf
+
+$plgdata = array(
+   'title' =&gt; 'Project &lt;&lt;Dream Application&gt;&gt;'
+  ,'daterange'=&gt;array('2013-01-01','2013-12-31') # Îáùèé âûâîäèìûé äèàïàçîí äàò íà ãðàôèêå
+  ,'items' =&gt; array(
+        array('id'=&gt;'task00', 'description'=&gt;'Publish on KickStarter', 'datestart'=&gt;'2013-01-01', 'workdays'=&gt;14
+          ,'members'=&gt;'Andriano,Mickele','progress'=&gt;0.30)
+       ,array('id'=&gt;'task01', 'description'=&gt;'Planning Development process', 'datestart'=&gt;'2013-01-15', 'workdays'=&gt;28,'members'=&gt;'Steve,Paul,Hanna')
+       ,array('id'=&gt;'task03', 'description'=&gt;'Developing Application Core', 'datestart'=&gt;'2013-01-01', 'workdays'=&gt;59,'progress'=&gt;0.20, 'members'=&gt;'Antonio,Paul,Barbara')
+       ,array('id'=&gt;'task02', 'description'=&gt;'Developing Main UI', 'datestart'=&gt;'2013-01-01', 'workdays'=&gt;59, 'progress'=&gt;0.25, 'members'=&gt;array('John','Paul'))
+       ,array('id'=&gt;'task04', 'description'=&gt;'Programming Plugins', 'datestart'=&gt;'2013-01-01', 'workdays'=&gt;30, 'dependencies'=&gt;'task02,task03')
+// ...
+);
+
+$pdf-&gt;setPluginData('my_gantt1', $plgdata); // passing gantt data - info about tasks, milestones
+$pdf-&gt;Render();
+</pre>
+
+Don't forget to pass correct name in <b>setPluginData</b>() first parameter, <b>my_gantt1</b>, it is a name of our "plugin field"
+(value of the <b>name</b> attribute of a "plugin" field). Due to this binding you can draw more than one chart on the page.
+<br>
+
+<h4>PdfGantt methods</h4>
+
+<b>__construct($tcpdfobj, $cfg = null, $x=0,$y=0,$w=0,$h=0)</b> - class constructor. Parameters:
+<br><br>
+<b>$tcpdfobj</b> - TCPDF instance, must be created before, this ref will be used for rendering all needed graphics and texts.<br>
+
+<br><br>$cfg - associative array in form 'key' =&gt; value, list of supported keys described (all configuration parameters)
+<a href="#cfg_list">here</a>).
+If not an array, parameter is ignored.
+<br><br>$x, $y - "left" and "top" coords of rectangle area to be filled by chart, $w and $h - it's width and height.
+<br>If zero width passed, the width of the page is used (small 5 mm margin is added).
+The same is done for passed width ($h).
+
+<br><br>
+<a name="cfg_list" id="cfg_list"></a>list of supported configuration keys :
+<br><br>
+<table>
+ <tr><th>Parameter name (key)</th><th>Description</th><th>default value</th>
+ </tr>
+ <tr>
+   <td>stringcharset</td>
+   <td>Charset of passed string data, like task and milestone names, responsible people etc.
+   It is needed to make correct convertation to UTF-8 before placing to PDF.
+   When you use this module as CprintformPdf plugin, you don't have to pass this parameter, because it's passed from analog parameter set CprintformPdf contructor.
+   </td>
+   <td>UTF-8
+   </td>
+ </tr>
+
+ <tr>
+  <td>dateformat</td>
+  <td>Any valid PHP date fromat string, used for printing dates in top of the grid. See PHP function date() for supported formats</td>
+  <td>'M Y', so strings like "Jan 2013", "Feb 2013" will be printed</td>
+ </tr>
+
+ <tr>
+  <td>dateformat2</td>
+  <td>Date format for printing beginning dates for every task (rigth over task rectangle)</td>
+  <td>'m/j' ("01/1", "01/24" etc.)</td>
+ </tr>
+
+ <tr>
+  <td>descr_width</td>
+  <td>Width of the "task description" column. Left column of the chart, that holds task names and lists of people working on this task. Width can be set as float on 0...1 range, so it is treated as "percent" of the whole chart width.
+  If you pass a number greated than 1, it is treated as exact width in millemeters.
+  Zero value turns this column off. (It is usefull if you make "panoramic" splitted chart)
+  </td>
+  <td>0.2 (20 percents of the whole chart area width)</td>
+ </tr>
+
+ <tr>
+  <td>bgcolor</td>
+  <td>background color under chart. Supports all color definitions that are correct for TCPDF class ('blue','#F0F0EE','#DDD').
+  </td>
+  <td>'' (empty string, no background)</td>
+ </tr>
+
+ <tr>
+  <td>grid_color</td>
+  <td>sets grid lines color (vertical lines for dates, horizontal lines- between tasks). And this color used for vertical "milestone" lines.
+  </td>
+  <td>'#888'</td>
+ </tr>
+
+ <tr>
+  <td>box_bgcolor</td>
+  <td>Main background color of task rectangles on timeline.
+  </td>
+  <td>'#88e'</td>
+ </tr>
+
+ <tr>
+  <td>box_bgcolor2</td>
+  <td>Alternative background color, that used if "progress" passed for the task. This color fills "undone" part of the progress bar inside task rectangle.
+  </td>
+  <td>'#ccf'</td>
+ </tr>
+
+ <tr>
+  <td>ms_color</td>
+  <td>background for "milestone" gems
+  </td>
+  <td>'#4ff'</td>
+ </tr>
+
+ <tr>
+  <td>box_border</td>
+  <td>border color for task rectangles and milestone gems.
+  </td>
+  <td>'#111'</td>
+ </tr>
+
+ <tr>
+  <td>text_color</td>
+  <td>Default color for all texts in chart.
+  </td>
+  <td>'#000'</td>
+ </tr>
+
+ <tr>
+  <td>arrow_color</td>
+  <td>color of arrows, that shows dependencies from the "main" task" to "descendant(s)".
+  </td>
+  <td>'#777'</td>
+ </tr>
+
+ <tr>
+  <td>dates_fontsize</td>
+  <td>sets font size for dates
+  </td>
+  <td>6</td>
+ </tr>
+
+ <tr>
+  <td>taskdescr_fontsize</td>
+  <td>sets font size for task descriptions (left column)
+  </td>
+  <td>7</td>
+ </tr>
+
+ <tr>
+  <td>members_fontsize</td>
+  <td>sets font size for "responsible" people working on the task. Small fonts recommended, otherwise if many people listed and height of the chart is not sufficient, this list could be partly or fully
+  hidden ( to avoid overlapping with next task). TCPDF can change font size automatically, to make text fit in area.
+
+  </td>
+  <td>5.5</td>
+ </tr>
+
+ <tr>
+  <td>ms_fontsize</td>
+  <td>sets font size for milestone names.
+  </td>
+  <td>6</td>
+ </tr>
+
+ <tr>
+  <td>shade_color</td>
+  <td>non-empty value turns on shadows under task rectangles, and sets it's color.
+  </td>
+  <td>'' (empty string, no shadows)</td>
+ </tr>
+
+ <tr>
+  <td>shade_offsetx</td>
+  <td>horizontal offset of the shadow from it's "origin"
+  </td>
+  <td>1 (mm)</td>
+ </tr>
+
+ <tr>
+  <td>shade_offsety</td>
+  <td>vertical offset of the shadow from it's "origin"
+  </td>
+  <td>0.7 (mm)</td>
+ </tr>
+
+ <tr>
+  <td>show_taskdays</td>
+  <td>Print ot not to print amount of days for every task (after task start date).
+  </td>
+  <td>1 (turn on)</td>
+ </tr>
+
+ <tr>
+  <td>ms_height</td>
+  <td>"Milestone height", height of the area for milestones printing. This area will be created only if at least one task has "milestone" attribute.
+   Value in range 0...1.0 treated as percentage (of the whole chart area height), greater than 1 as millimeters.
+  </td>
+  <td>0.08</td>
+ </tr>
+
+</table>
+
+<br><br>
+
+<b>Render($data)</b> -  method draws gantt chart.
+
+<br><br>$data is an associative array, that contains following items:
+<br><br>
+<table>
+  <tr>
+    <td>daterange</td>
+    <td>array (one or two elements) or a string wil comma separated values: start date, end date of the timeline.
+    Dates must be in 'YYYY-MM-DD' format. If no dates passed or only one value (start date), dates will be computed from passed tasks start/end dates, to make all tasks fit in the timeline.
+    If start date is not a first day of the month, timeline will start at the first day in that month anyway.
+    <br>
+    Example:  $data['daterange'] = array('2013-01-01','2013-12-31')
+    </td>
+  </tr>
+  <tr>
+    <td>items</td>
+    <td>Array with all tasks, including their names, dates, responsible people list. Every array item is an associative array containing following elements:
+      <ul>
+        <li>'<b>id</b>' - (mandatory) unique name (id) of the task. These ID's will be used to build "relationship" between tasks.
+        <br>Task without "id" will be ignored !</li>
+        <li>'<b>description</b>' - (optional) task description. Descriptions will be printed on the left column. If no description, ID of the task will be used.</li>
+        <li>'<b>color</b>' - (optional) font color for the task descriptions. If passed, it is ued instead of "default" font from common configuration parameters ('text_color').
+        </li>
+        <li>'<b>members</b>' - (optional) responsible person list - names of team members that work on this task. Can be a comma separated string or an array of strings</li>
+        <li>'<b>mcolor</b>' - (optional) font color for printing task members</li>
+        <li>'<b>datestart</b>' - (optional) start date of the task, in format 'YYYY-DD-MM'</li>
+        <li>'<b>dateend</b>' - (optional) end date, 'YYYY-DD-MM'</li>
+        <li>'<b>workdays</b>' - (optional) amount of working days for the task (should be an integer positive value)</li>
+        <li>'<b>progress</b>' - (optional) already performed work amount, in range 0...1 (so 0.1 means "10 percents done")
+        <br>If "progress" not passed or it is 1, tasl rectangle filled by base background color (box_bgcolor), if value is lower than 1.0,
+        rectangle will have a colored "progress bar" and printed percent above it.</li>
+        <li>'<b>dependencies</b>' - (optional) list of tasks (their "id"), this task depends on (cannot start until trhey finished)
+        <br>It can be a comma separated string or an array</li>
+        <li>'<b>milestone</b>' - (optional) name of a new milestone, that starts with this task</li>
+      </ul>
+    </td>
+  </tr>
+</table>
+<br>
+Every task must have "dateend" OR "workdays" value, to be able compute a it's lenght in the timeline.
+If no start date passed for the task, it will begin right after the latest "parent" task end date.
+If task has no "parents" and start date, it will be started at the beginning of the timeline.
+
+<br><br>
+"dependencies" parameter should contain only names of tasks listed earlier in the array. Otherwise drawing may fail.
+
+<br><br>
+<b>localize($param)</b> - this method is called if you want to draw strings in your language.
+<br>$param is an associative array:
+<table>
+  <tr>
+    <td>days</td>
+    <td>"Day amount" string, where "%s" macro for days value</td>
+  </tr>
+  <tr>
+    <td>milestones</td>
+    <td>Substitutes "Milestones" header</td>
+  </tr>
+</table>
+
+<br><br>
+<b>setAreaPosition($x, $y, $w=0, $h=0)</b> changes position ans size of the chart area. Respective parameters passed with class constructor, will be overwritten
+by these values.
+
+<br><br>
+<b>setConfig($cfg)</b> method used to add or replace common configuration values. Associative array $cfg can contain any supported items.
+
+<h4>Drawing part of the chart</h4>
+
+Your timeline can be very long, and trying to draw at once will result to unreadable chart.
+In such cases, it's possible to split Gannt chart to smaller portions, so later you can merge them to one large "panoramic view" (like in photo panorams created from small frames).
+
+<br><br>
+To do this, you can render the same items data more than once, every time changing start/end dates and starting position of the chart area.
+And it is a good idea to disable "descriptions" column for all parts after the first one (by setting '<b>descr_width</b>' parameter to zero).
+
+<br>You can see how it works in the second attached example module, by calling it with "pano=1" parameter.
+<pre>// Example of splitted drawing Gannt chart
+
+$pdf = new TCPDF('P','mm','A4');
+$pdf-&gt;SetFont('', '', 8);
+$pdf-&gt;setPrintHeader(false);
+$pdf-&gt;setPrintFooter(false);
+
+$pdf-&gt;AddPage();
+
+$gantt_cfg = array(
+    'descr_width'=&gt;0.30
+    // ...
+);
+
+$gantt = new PdfGantt($pdf, $gantt_cfg,10,10,190,80);
+
+$ganttdata = array(
+   'title' =&gt; 'Project Dream Application'
+  ,'daterange'=&gt;array('2013-01-01','2013-05-31')
+  ,'items' =&gt; array(
+  // ...
+  )
+);
+
+$gantt-&gt;Render($ganttdata);
+
+$gantt_cfg['descr_width'] = 0; // disable task names in second and rest portions
+$ganttdata['daterange'] = array('2013-06-01','2013-12-31');
+
+$pdf-&gt;AddPage(); // You can draw on the next PDF page, or modify starting position on the same page
+$gantt-&gt;setConfig($gantt_cfg);
+$gantt-&gt;Render($ganttdata);
+$pdf-&gt;Output('Gantt_standalone.pdf', 'I');
+</pre>
+
+<br><br>
+This class can be used as s starting point for creating new plugins for printform-pdf.php.
+
+<div style="text-align:right">Distributed under BSD License</div>
+
+<h4>Change log</h4>
+
+<h50.90.0018 (04/26/2013)</h5>
+<ul>
+  <li>First release</li>
+</ul>
+
+<!-- DOC END -->
+<br />
+<hr>
+<div align=center><font size=-2>Copyright &copy; 2010 Alexander Selifonov, <a href="http://www.selifan.ru">www.selifan.ru</a>
+</font></div>
+</body></html>
