@@ -1,6 +1,6 @@
 <?PHP
 /**
-* @package pdf_gantt
+* @package ru.selifan.pdf_gantt
 * @name pdf_gantt.php, contains class PdfGantt,
 * for generating PDF documents with Gantt charts.
 * @uses TCPDF (printing to PDF document)
